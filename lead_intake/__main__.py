@@ -34,6 +34,7 @@ def parser() -> argparse.ArgumentParser:
     web.add_argument("--model-dir", type=Path, default=Path("artifacts/model"))
     web.add_argument("--out-dir", type=Path, default=Path("out/web"))
     web.add_argument("--port", type=int, default=8765)
+    web.add_argument("--fresh-uploads", action="store_true", help="replace the dashboard with each successful upload")
     for name, help_text in (
         ("actions", "print unacknowledged CRM updates and deletions as JSON"),
         ("exports", "list generated exports and their CRM confirmation status"),
@@ -75,7 +76,7 @@ def main() -> None:
             print_result(run_batch(args.input, args.data_dir, args.state, args.model_dir, args.out_dir))
         elif args.command == "serve":
             from .web import serve
-            serve(args.data_dir, args.state, args.model_dir, args.out_dir, args.port)
+            serve(args.data_dir, args.state, args.model_dir, args.out_dir, args.port, fresh_uploads=args.fresh_uploads)
         else:
             if not args.state.is_file():
                 raise ValueError(f"no state database at {args.state}")

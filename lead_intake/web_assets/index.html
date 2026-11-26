@@ -27,7 +27,7 @@
           <div><h1 id="dashboard-title">Lead dashboard</h1><p id="range-text">Reading the workspace…</p></div>
           <div class="toolbar">
             <label class="select-wrap"><span class="sr-only">Arrival date range</span><select id="range">
-              <option value="7">Last 7 days</option><option value="14" selected>Last 14 days</option><option value="30">Last 30 days</option>
+              <option value="all" id="range-all" hidden>Entire upload</option><option value="7">Last 7 days</option><option value="14" selected>Last 14 days</option><option value="30">Last 30 days</option>
             </select></label>
             <button class="button secondary" id="refresh" type="button">Refresh</button>
           </div>
@@ -44,7 +44,7 @@
         </div>
         <div class="split chart-row">
           <article class="panel volume">
-            <div class="panel-head"><h2>Daily lead volume</h2>
+            <div class="panel-head"><h2 id="volume-title">Daily lead volume</h2>
               <label class="select-wrap"><span class="sr-only">Group daily leads by</span><select id="group">
                 <option value="source">Intake source</option><option value="channel">Marketing channel</option>
               </select></label>
@@ -87,11 +87,11 @@
             <div class="handoff-counts"><div><strong id="handoff-updates">—</strong><span>Updates</span></div><div><strong id="handoff-deletes">—</strong><span>Deletions</span></div></div>
             <a class="button secondary" href="/api/actions">Download pending actions</a></article>
         </div>
-        <article class="panel recent"><div class="panel-head"><h2>Recent batches</h2></div>
+        <article class="panel recent"><div class="panel-head"><h2 id="runs-title">Recent batches</h2></div>
           <div id="runs"></div></article>
       </section>
       <section id="intake" aria-labelledby="intake-title" hidden>
-        <div class="page-heading"><div><h1 id="intake-title">CSV intake</h1><p>Upload lead events to review rejected rows and export CRM-ready leads.</p></div></div>
+        <div class="page-heading"><div><h1 id="intake-title">CSV intake</h1><p id="intake-description">Upload lead events to review rejected rows and export CRM-ready leads.</p></div></div>
         <div id="intake-message" class="notice" role="status" hidden></div>
         <div class="split intake-row">
           <article class="panel upload-panel">
@@ -111,7 +111,7 @@
             <div class="panel-head"><h2>Use the assignment files</h2></div>
             <div class="sample-block"><div><strong>Initial batch</strong><span>lead_events.csv · validation and rejections</span></div>
               <button class="button secondary" data-sample="initial" type="button">Run initial sample</button></div>
-            <div class="sample-block"><div><strong>Follow-up batch</strong><span>Run after the initial batch to see updates and deletions.</span></div>
+            <div class="sample-block" id="follow-up-sample"><div><strong>Follow-up batch</strong><span>Run after the initial batch to see updates and deletions.</span></div>
               <button class="button secondary" data-sample="follow-up" type="button">Run follow-up sample</button></div>
           </article>
         </div>

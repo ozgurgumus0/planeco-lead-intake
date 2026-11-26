@@ -79,6 +79,66 @@ class WebTests(unittest.TestCase):
                     server.shutdown()
                     thread.join(timeout=5)
 
+    def test_fresh_uploads_replace_the_dashboard_and_exports(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            model = root / "model"
+            train(DATA / "historical_leads.csv", model)
+            workspace = Workspace(DATA, root / "state.sqlite3", model, root / "exports", fresh_uploads=True)
+            with WorkspaceServer(0, workspace) as server:
+                thread = threading.Thread(target=server.serve_forever, daemon=True)
+                thread.start()
+                try:
+                    base = f"http://127.0.0.1:{server.server_port}"
+
+                    def get(path, body=None):
+                        headers = {"Content-Type": "text/csv"} if body is not None else {}
+                        with urlopen(Request(base + path, data=body, headers=headers), timeout=30) as response:
+                            return json.load(response)
+
+                    def upload(content):
+                        batch = get("/api/intake?name=full.csv", content)["batch_id"]
+                        return get(f"/api/runs/{batch}")
+
+                    self.assertEqual(get("/api/dashboard")["new_leads"], 0)
+                    original = (DATA / "lead_events.csv").read_bytes()
+                    first = upload(original)
+                    second = upload(original)
+                    for result in (first, second):
+                        self.assertEqual((result["deliveries"], result["crm_rows"], result["rejection_rows"]), (648, 538, 18))
+                        self.assertEqual(len(result["rejected_preview"]), 18)
+                    full = get("/api/dashboard")
+                    self.assertTrue(full["fresh_uploads"])
+                    self.assertEqual(full["new_leads"], 541)
+                    self.assertEqual([run["batch_id"] for run in full["runs"]], [second["batch_id"]])
+                    with self.assertRaises(HTTPError) as expired:
+                        get(f"/api/runs/{first['batch_id']}")
+                    self.assertEqual(expired.exception.code, 404)
+
+                    previous_id = second["crm_preview"][0]["external_id"]
+                    reader = csv.DictReader(io.StringIO(original.decode("utf-8-sig")))
+                    overlapping_row = next(row for row in reader
+                                           if row["external_id"] == previous_id and row["event_type"] == "lead.created")
+                    subset = io.StringIO(newline="")
+                    writer = csv.DictWriter(subset, fieldnames=reader.fieldnames)
+                    writer.writeheader()
+                    writer.writerow(overlapping_row)
+                    latest = upload(subset.getvalue().encode("utf-8"))
+                    self.assertEqual((latest["crm_rows"], latest["rejection_rows"]), (1, 0))
+                    with self.assertRaises(HTTPError) as invalid:
+                        upload(b"wrong_header\ninvalid\n")
+                    self.assertEqual(invalid.exception.code, 400)
+                    refreshed = get("/api/dashboard")
+                    self.assertEqual(refreshed["new_leads"], 1)
+                    self.assertEqual([run["batch_id"] for run in refreshed["runs"]], [latest["batch_id"]])
+                    self.assertFalse(workspace.state.exists())
+                    self.assertFalse(workspace.output.exists())
+                    active_snapshot = server.workspace.state.parent
+                finally:
+                    server.shutdown()
+                    thread.join(timeout=5)
+            self.assertFalse(active_snapshot.exists())
+
     def test_older_state_seeds_the_arrival_counts_once(self):
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / "state.sqlite3"

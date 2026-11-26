@@ -6,9 +6,11 @@ A local workspace that validates and deduplicates enquiries, scores their chance
 
 1. On Windows, extract the project and double-click **Start Planeco Dashboard.cmd**. It uses Python 3.11 or later, installs the pinned dependencies on first launch, and opens the browser. Keep the launcher window open.
 2. In **CSV intake**, select **Run initial sample** or upload the original [assignment CSV](data/lead_events.csv). A fresh workspace generates **538 new CRM rows** and **18 rejected rows**. The rejection reasons open automatically. Use **CRM CSV** and **Rejected CSV** to download the two outputs.
-3. Run the same file again to see zero new CRM rows or rejections. When the original file had rejected rows, the replay shows their original reasons and links to the original rejection CSV. Run the follow-up sample to see new leads, updates, and a deletion. Switch to **Dashboard** for daily arrivals, source and channel mix, rep capacity, and historical campaign economics. **Recent batches** reopens previous results.
+3. Upload the complete CSV whenever you want to refresh the demo. Each successful run rebuilds the dashboard and CRM and rejection downloads from that file. Uploading the same file again returns the same results. Download the exports before replacing them with another upload or stopping the app. **Latest upload** reopens the current results.
 
-The dashboard reads the same SQLite state as the CLI. It refreshes after a batch and every 15 minutes while open. Date filters use Lisbon days and end on the last recorded arrival so the fixture stays visible.
+The launcher starts in snapshot mode, with the entire upload selected on the dashboard. It refreshes after a batch and every 15 minutes while open. Date filters use Lisbon days and end on the last recorded arrival so the fixture stays visible.
+
+To demonstrate the assignment’s cumulative intake and follow-up updates, start the launcher with `--keep-history` or use the [terminal commands](#setup-and-run). In cumulative mode, the same CSV produces zero new CRM rows, and the replay can reopen its original rejection report. The follow-up sample exercises updates and deletions against the first batch.
 
 **Sales funnel** shows August–October historical cohorts separately from live intake. Compare lead volume, signed-deal conversion, cost per lead, and cost per win by campaign or channel. Overall cost per lead divides recorded spend by leads in campaigns with spend data. The assignment files have first-contact timing. Completed sales calls and cost per sales call require a call log, so the dashboard marks both as unavailable.
 
@@ -59,7 +61,7 @@ To start the dashboard from the terminal after setup, run:
 & $python -m lead_intake serve
 ```
 
-Use `--state`, `--model-dir`, `--out-dir`, and `--port` to select an isolated demo workspace. The server listens on loopback. Accepted first arrivals remain in aggregate counts through later updates and erasure. A pre-existing database seeds its initial chart from surviving leads. Capacity and queue figures show current state. Campaign economics uses the separate August–October historical cohorts.
+The terminal server uses cumulative state by default. Add `--fresh-uploads` for the launcher's snapshot behavior. Use `--state`, `--model-dir`, `--out-dir`, and `--port` to select the workspace. The server listens on loopback. Accepted first arrivals remain in aggregate counts through later updates and erasure within a snapshot or cumulative workspace. Capacity and queue figures show current state. Campaign economics uses the separate August–October historical cohorts.
 
 ## Demo on the same database and model
 

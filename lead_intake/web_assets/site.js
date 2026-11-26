@@ -121,12 +121,17 @@ function renderChart() {
   const dimension = el("group").value;
   const series = groups[dimension];
   const dates = new Map();
-  const end = dateObject(snapshot.end);
-  for (const day = dateObject(snapshot.start); day <= end; day.setUTCDate(day.getUTCDate() + 1)) {
-    dates.set(day.toISOString().slice(0, 10), Object.fromEntries(Object.keys(series).map((name) => [name, 0])));
+  const dayMs = 86400000;
+  const start = dateObject(snapshot.start).getTime();
+  const end = dateObject(snapshot.end).getTime();
+  const daysPerBar = Math.max(1, Math.ceil(((end - start) / dayMs + 1) / 30));
+  const intervalMs = daysPerBar * dayMs;
+  for (let day = start; day <= end; day += intervalMs) {
+    dates.set(day, Object.fromEntries(Object.keys(series).map((name) => [name, 0])));
   }
   for (const row of snapshot.arrivals) {
-    const day = dates.get(row.day);
+    const offset = dateObject(row.day).getTime() - start;
+    const day = dates.get(start + Math.floor(offset / intervalMs) * intervalMs);
     if (day && Object.hasOwn(day, row[dimension])) day[row[dimension]] += row.total;
   }
   const totals = {};
@@ -137,6 +142,7 @@ function renderChart() {
   const chart = el("volume-chart");
   const legend = el("chart-legend");
   const mix = el("mix");
+  el("volume-title").textContent = daysPerBar === 1 ? "Daily lead volume" : "Lead volume by date range";
   el("mix-title").textContent = dimension === "source" ? "Intake sources" : "Marketing channels";
   chart.replaceChildren();
   legend.replaceChildren();
@@ -171,7 +177,10 @@ function renderChart() {
     const total = Object.values(values).reduce((a, b) => a + b, 0);
     const detail = categories.filter((name) => values[name])
       .map((name) => series[name][0] + " " + values[name]).join(", ");
-    const annotation = dateLabel(date) + " · " + integer.format(total) + " leads" + (detail ? " · " + detail : "");
+    const lastDay = Math.min(date + intervalMs - dayMs, end);
+    const firstLabel = dayFormat.format(date);
+    const dateRange = lastDay === date ? firstLabel : firstLabel + " – " + dayFormat.format(lastDay);
+    const annotation = dateRange + " · " + integer.format(total) + " leads" + (detail ? " · " + detail : "");
     const bar = node("div", "bar");
     bar.setAttribute("role", "img");
     bar.setAttribute("aria-label", annotation);
@@ -188,7 +197,8 @@ function renderChart() {
     bar.addEventListener("focus", () => { reading.textContent = annotation; });
     bar.addEventListener("mouseenter", () => { reading.textContent = annotation; });
     bars.append(bar);
-    labels.append(node("span", "", index % interval === 0 ? (dates.size <= 7 ? dateLabel(date) : date.slice(-2)) : ""));
+    const tick = dates.size <= 7 || daysPerBar > 1 ? firstLabel : new Date(date).toISOString().slice(8, 10);
+    labels.append(node("span", "", index % interval === 0 ? tick : ""));
     index += 1;
   }
   plot.append(yAxis, lines, bars, labels);
@@ -284,6 +294,12 @@ function renderRuns() {
 }
 
 function renderDashboard() {
+  el("runs-title").textContent = snapshot.fresh_uploads ? "Latest upload" : "Recent batches";
+  el("follow-up-sample").hidden = Boolean(snapshot.fresh_uploads);
+  el("range-all").hidden = !snapshot.fresh_uploads;
+  el("intake-description").textContent = snapshot.fresh_uploads
+    ? "Upload the complete CSV. Each successful upload replaces the dashboard and download files."
+    : "Upload lead events to review rejected rows and export CRM-ready leads.";
   el("stat-new").textContent = integer.format(snapshot.new_leads);
   el("stat-active").textContent = integer.format(snapshot.active);
   el("stat-queue").textContent = integer.format(snapshot.queued);
@@ -321,8 +337,14 @@ async function loadDashboard() {
   el("refresh").disabled = true;
   el("refresh").textContent = "Refreshing…";
   try {
-    const data = await api("/api/dashboard?days=" + el("range").value);
+    const endpoint = snapshot ? "/api/dashboard?days=" + el("range").value : "/api/dashboard";
+    const data = await api(endpoint);
     if (request !== dashboardRequest) return;
+    if (!snapshot && data.fresh_uploads) el("range").value = "all";
+    if (data.fresh_uploads && !busy && currentRun && data.runs[0]?.batch_id !== currentRun.batch_id) {
+      currentRun = null;
+      el("output-panel").hidden = true;
+    }
     snapshot = data;
     notice("dashboard-error", "");
     renderDashboard();

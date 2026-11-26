@@ -39,13 +39,16 @@ def history_metrics(data_dir) -> dict:
     }
 
 
-def dashboard(state, data_dir, days: int) -> dict:
+def dashboard(state, data_dir, days: int | None) -> dict:
     with open_state(state) as conn:
         # All panels use one SQLite snapshot even if intake is committing concurrently.
         conn.execute("BEGIN")
-        latest = conn.execute("SELECT max(day) FROM arrival_counts").fetchone()[0]
+        earliest, latest = conn.execute("SELECT min(day), max(day) FROM arrival_counts").fetchone()
         end = date.fromisoformat(latest) if latest else datetime.now(LISBON).date()
-        start = end - timedelta(days=days - 1)
+        if days is None:
+            start = date.fromisoformat(earliest) if earliest else end
+        else:
+            start = end - timedelta(days=days - 1)
         arrivals = [dict(row) for row in conn.execute(
             "SELECT * FROM arrival_counts WHERE day >= ? ORDER BY day, source, channel", (start.isoformat(),)
         )]

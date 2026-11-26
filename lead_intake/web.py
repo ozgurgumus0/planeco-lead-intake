@@ -5,8 +5,10 @@ import re
 import socket
 import sqlite3
 import tempfile
+import threading
 import uuid
-from dataclasses import dataclass
+from contextlib import nullcontext
+from dataclasses import dataclass, replace
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from itertools import islice
 from pathlib import Path
@@ -42,11 +44,13 @@ class Workspace:
     state: Path
     model: Path
     output: Path
+    fresh_uploads: bool = False
 
     @property
     def identity(self) -> str:
         paths = (self.data, self.state, self.model, self.output)
-        return digest("\0".join(str(path.resolve()) for path in paths).encode("utf-8"))
+        key = str(self.fresh_uploads) + "\0" + "\0".join(str(path.resolve()) for path in paths)
+        return digest(key.encode("utf-8"))
 
     def ingest(self, content: bytes, filename: str) -> str:
         with tempfile.TemporaryDirectory(prefix="planeco-") as folder:
@@ -128,7 +132,42 @@ def preview(row) -> dict:
 class WorkspaceServer(ThreadingHTTPServer):
     def __init__(self, port: int, workspace: Workspace):
         self.workspace = workspace
+        self.workspace_identity = workspace.identity
+        self.request_lock = threading.Lock() if workspace.fresh_uploads else nullcontext()
+        self.daemon_threads = not workspace.fresh_uploads
+        self.snapshot = None
         super().__init__(("127.0.0.1", port), Handler)
+        if workspace.fresh_uploads:
+            try:
+                self.snapshot, self.workspace = self.new_snapshot()
+            except OSError:
+                self.server_close()
+                raise
+
+    def new_snapshot(self):
+        folder = tempfile.TemporaryDirectory(prefix="planeco-snapshot-", ignore_cleanup_errors=True)
+        root = Path(folder.name)
+        return folder, replace(self.workspace, state=root / "intake.sqlite3", output=root / "exports")
+
+    def ingest(self, content, filename):
+        if not self.workspace.fresh_uploads:
+            return self.workspace.ingest(content, filename)
+        # Handler requests hold the snapshot lock through reads and downloads.
+        folder, candidate = self.new_snapshot()
+        try:
+            batch_id = candidate.ingest(content, filename)
+        except BaseException:
+            folder.cleanup()
+            raise
+        previous = self.snapshot
+        self.snapshot, self.workspace = folder, candidate
+        previous.cleanup()
+        return batch_id
+
+    def server_close(self):
+        super().server_close()
+        if self.snapshot is not None:
+            self.snapshot.cleanup()
 
     def server_bind(self):
         if hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
@@ -170,18 +209,24 @@ class Handler(BaseHTTPRequestHandler):
         if not self.allowed():
             return self.json({"error": "Use the local PlaneCo address."}, status=403)
         url = urlsplit(self.path)
+        if url.path == "/api/health":
+            return self.json({"workspace": self.server.workspace_identity})
+        with self.server.request_lock:
+            self.get_workspace_response(url)
+
+    def get_workspace_response(self, url):
         workspace = self.server.workspace
         try:
             if url.path in STATIC:
                 filename, content_type = STATIC[url.path]
                 return self.response((ASSETS / filename).read_bytes(), content_type)
-            if url.path == "/api/health":
-                return self.json({"workspace": workspace.identity})
             if url.path == "/api/dashboard":
-                days = int(parse_qs(url.query).get("days", ["14"])[0])
-                if days not in {7, 14, 30}:
-                    raise ValueError("Choose a range of 7, 14, or 30 days.")
-                return self.json(dashboard(workspace.state, workspace.data, days))
+                default_days = "all" if workspace.fresh_uploads else "14"
+                selected = parse_qs(url.query).get("days", [default_days])[0]
+                if selected not in {"all", "7", "14", "30"}:
+                    raise ValueError("Choose all arrivals or a range of 7, 14, or 30 days.")
+                result = dashboard(workspace.state, workspace.data, None if selected == "all" else int(selected))
+                return self.json({**result, "fresh_uploads": workspace.fresh_uploads})
             if url.path == "/api/actions":
                 with open_state(workspace.state) as conn:
                     return self.response(json.dumps(crm_actions(conn), indent=2).encode("utf-8"),
@@ -205,6 +250,10 @@ class Handler(BaseHTTPRequestHandler):
     def do_POST(self):
         if not self.allowed():
             return self.json({"error": "Use the local PlaneCo address."}, status=403)
+        with self.server.request_lock:
+            self.post_workspace_response()
+
+    def post_workspace_response(self):
         url = urlsplit(self.path)
         workspace = self.server.workspace
         try:
@@ -220,7 +269,7 @@ class Handler(BaseHTTPRequestHandler):
                 if choice not in samples:
                     raise ValueError("Choose an initial or follow-up sample.")
                 sample = samples[choice]
-                return self.json({"batch_id": workspace.ingest(sample.read_bytes(), sample.name)})
+                return self.json({"batch_id": self.server.ingest(sample.read_bytes(), sample.name)})
             if url.path != "/api/intake":
                 return self.json({"error": "Page not found."}, status=404)
             filename = parse_qs(url.query).get("name", ["batch.csv"])[0].replace("\\", "/").split("/")[-1]
@@ -234,15 +283,16 @@ class Handler(BaseHTTPRequestHandler):
             body = self.rfile.read(length)
             if len(body) != length:
                 raise ValueError("The upload ended early. Try uploading again.")
-            return self.json({"batch_id": workspace.ingest(body, filename)})
+            return self.json({"batch_id": self.server.ingest(body, filename)})
         except (OSError, ValueError, RuntimeError, sqlite3.Error, csv.Error) as exc:
             return self.json({"error": str(exc)}, status=400)
 
 
-def serve(data: Path, state: Path, model: Path, output: Path, port: int):
+def serve(data: Path, state: Path, model: Path, output: Path, port: int, *, fresh_uploads=False):
     if not 0 <= port <= 65535:
         raise ValueError("Port must be between 0 and 65535.")
-    with WorkspaceServer(port, Workspace(data.resolve(), state.resolve(), model.resolve(), output.resolve())) as server:
+    workspace = Workspace(data.resolve(), state.resolve(), model.resolve(), output.resolve(), fresh_uploads=fresh_uploads)
+    with WorkspaceServer(port, workspace) as server:
         print(f"PlaneCo workspace at http://127.0.0.1:{server.server_port}", flush=True)
         try:
             server.serve_forever()

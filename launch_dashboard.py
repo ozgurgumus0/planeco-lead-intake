@@ -16,7 +16,7 @@ ROOT = Path(__file__).resolve().parent
 ENVIRONMENT = ROOT / ".venv"
 PYTHON = ENVIRONMENT / ("Scripts/python.exe" if os.name == "nt" else "bin/python")
 REQUIREMENTS = ROOT / "requirements.txt"
-PORTS = (8765, 8766, 0)
+PORTS = (8765, 8766, 25971, 0)
 
 
 def run_in_environment() -> int:
@@ -57,11 +57,11 @@ def open_dashboard(url: str, open_browser: bool) -> None:
         print("Open the displayed address in your browser.", flush=True)
 
 
-def serve_dashboard(open_browser: bool) -> None:
+def serve_dashboard(open_browser: bool, *, fresh_uploads: bool) -> None:
     from lead_intake.web import Workspace, WorkspaceServer
 
     workspace = Workspace(ROOT / "data", ROOT / "state" / "intake.sqlite3",
-                          ROOT / "artifacts" / "model", ROOT / "out" / "web")
+                          ROOT / "artifacts" / "model", ROOT / "out" / "web", fresh_uploads=fresh_uploads)
     for port in PORTS:
         address = f"http://127.0.0.1:{port}"
         if port and workspace_is_available(address, workspace.identity):
@@ -97,6 +97,7 @@ def serve_dashboard(open_browser: bool) -> None:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--no-browser", action="store_true", help="start without opening a browser tab")
+    parser.add_argument("--keep-history", action="store_true", help="run the cumulative intake workspace")
     args = parser.parse_args()
     if sys.version_info < (3, 11):
         parser.error("PlaneCo needs Python 3.11 or newer.")
@@ -104,7 +105,7 @@ def main() -> int:
         if Path(sys.prefix).resolve() != ENVIRONMENT.resolve():
             return run_in_environment()
         install_requirements()
-        serve_dashboard(not args.no_browser)
+        serve_dashboard(not args.no_browser, fresh_uploads=not args.keep_history)
     except subprocess.CalledProcessError:
         print("Environment setup failed. Check the installation message above.", file=sys.stderr)
         return 1
