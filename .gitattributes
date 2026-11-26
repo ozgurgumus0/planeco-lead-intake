@@ -3,3 +3,4 @@ demo/*.csv -text
 *.py text eol=lf
 *.md text eol=lf
 requirements.txt text eol=lf
+*.cmd text eol=crlf

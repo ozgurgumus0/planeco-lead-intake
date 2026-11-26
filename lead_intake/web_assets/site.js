@@ -393,7 +393,7 @@ function resultPreview() {
 
 function renderRun(run) {
   currentRun = run;
-  previewMode = "crm";
+  previewMode = run.rejection_rows > 0 ? "rejected" : "crm";
   el("output-panel").hidden = false;
   el("result-file").textContent = run.filename + (run.published_at ? " · " + lisbonStamp.format(new Date(run.published_at)) : "");
   const status = el("result-status");

@@ -25,11 +25,17 @@ This command also trains the scorer if the model directory has no saved scorer. 
 
 ## Browser workspace
 
+On Windows, extract the project and double-click **Start Planeco Dashboard.cmd**. It uses an installed Python 3.11 or newer, creates the project environment and installs the pinned dependencies if needed, then opens the dashboard. Keep the launcher window open while using the app.
+
+To start it from the terminal after setup, run:
+
 ```powershell
 & $python -m lead_intake serve
 ```
 
 Open the local address printed in the terminal. In **CSV intake**, upload your file or run the supplied initial sample. Inspect the CRM rows, rejection reasons, or event counts and download the original exports. Run the initial sample again to demonstrate replay protection. Then run the follow-up sample to see the update and deletion actions. Use the **Dashboard** to inspect daily arrivals, source or channel mix, sales capacity, pending CRM actions, and historical campaign economics.
+
+To demonstrate validation, select **Run initial sample** or upload the original [assignment CSV](data/lead_events.csv). In a fresh workspace it generates 538 CRM rows and 18 rejected rows. **Rejections** opens automatically and shows the reason for each row. Replaying the file creates zero new CRM rows. Use **Recent runs** to reopen the first result.
 
 The browser reads the same state and saved scorer as the command line. It checks the database every 15 minutes while the page is open, and refreshes after an upload. Use `--state`, `--model-dir`, `--out-dir`, and `--port` to select an isolated demo workspace. The server listens on this computer over loopback.
 

@@ -2,6 +2,7 @@ import csv
 import io
 import json
 import re
+import socket
 import sqlite3
 import tempfile
 import uuid
@@ -41,6 +42,11 @@ class Workspace:
     state: Path
     model: Path
     output: Path
+
+    @property
+    def identity(self) -> str:
+        paths = (self.data, self.state, self.model, self.output)
+        return digest("\0".join(str(path.resolve()) for path in paths).encode("utf-8"))
 
     def ingest(self, content: bytes, filename: str) -> str:
         with tempfile.TemporaryDirectory(prefix="planeco-") as folder:
@@ -100,6 +106,13 @@ class WorkspaceServer(ThreadingHTTPServer):
         self.workspace = workspace
         super().__init__(("127.0.0.1", port), Handler)
 
+    def server_bind(self):
+        if hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+            # SO_REUSEADDR can bind over an existing listener on Windows.
+            self.allow_reuse_address = False
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        super().server_bind()
+
 
 class Handler(BaseHTTPRequestHandler):
     def response(self, body: bytes, content_type: str, *, status=200, filename=None):
@@ -138,6 +151,8 @@ class Handler(BaseHTTPRequestHandler):
             if url.path in STATIC:
                 filename, content_type = STATIC[url.path]
                 return self.response((ASSETS / filename).read_bytes(), content_type)
+            if url.path == "/api/health":
+                return self.json({"workspace": workspace.identity})
             if url.path == "/api/dashboard":
                 days = int(parse_qs(url.query).get("days", ["14"])[0])
                 if days not in {7, 14, 30}:

@@ -43,6 +43,8 @@ class WebTests(unittest.TestCase):
                     preview = request(f"/api/runs/{first}")
                     self.assertEqual((preview["crm_rows"], preview["rejection_rows"]), (538, 18))
                     self.assertEqual(len(preview["crm_preview"]), 25)
+                    self.assertEqual(len(preview["rejected_preview"]), 18)
+                    self.assertTrue(all(row["reason"] for row in preview["rejected_preview"]))
                     self.assertNotIn("email", preview["crm_preview"][0])
 
                     crm = read(f"/api/runs/{first}/download/crm").decode()
@@ -63,6 +65,7 @@ class WebTests(unittest.TestCase):
                     self.assertEqual(dashboard["pending_actions"], {"update": 2, "delete": 1})
                     self.assertEqual(len(request("/api/actions")), 3)
                     self.assertEqual(len(dashboard["history"]["channels"]), 5)
+                    self.assertEqual(request("/api/health")["workspace"], workspace.identity)
                     with self.assertRaises(HTTPError) as error:
                         request("/api/intake?name=uploaded.csv", data, {**headers, "Origin": "http://example.invalid"})
                     self.assertEqual(error.exception.code, 403)
