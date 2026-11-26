@@ -382,7 +382,8 @@ function resultPreview() {
     return;
   }
   const rejected = previewMode === "rejected";
-  const rows = rejected ? currentRun.rejected_preview : currentRun.crm_preview;
+  const previous = currentRun.previous_rejections;
+  const rows = rejected ? (previous?.rows ?? currentRun.rejected_preview) : currentRun.crm_preview;
   if (!rows.length) {
     container.append(node("p", "empty", currentRun.files_available
       ? (rejected ? "There are no rejected rows in this batch." : "There are no new CRM rows in this batch.")
@@ -417,12 +418,13 @@ function resultPreview() {
   table.append(head, tbody);
   frame.append(table);
   container.append(frame, node("p", "footnote", "Showing "
-    + rows.length + " of " + (rejected ? currentRun.rejection_rows : currentRun.crm_rows) + " rows."));
+    + rows.length + " of " + (rejected ? (previous?.count ?? currentRun.rejection_rows) : currentRun.crm_rows) + " rows."));
 }
 
 function renderRun(run) {
   currentRun = run;
-  previewMode = run.rejection_rows > 0 ? "rejected" : "crm";
+  const previous = run.previous_rejections;
+  previewMode = run.rejection_rows > 0 || previous ? "rejected" : "crm";
   el("output-panel").hidden = false;
   el("result-file").textContent = run.filename + (run.published_at ? " · " + lisbonStamp.format(new Date(run.published_at)) : "");
   const status = el("result-status");
@@ -430,31 +432,43 @@ function renderRun(run) {
   status.classList.toggle("waiting", !run.published_at);
   const stats = el("result-stats");
   stats.replaceChildren();
-  for (const [name, value] of [
-    ["Deliveries", run.deliveries], ["New CRM rows", run.crm_rows], ["Rejected", run.rejection_rows],
+  for (const [name, value, highlight] of [
+    ["Deliveries", run.deliveries], ["New CRM rows", run.crm_rows],
+    [previous ? "Previously rejected" : "Rejected", previous?.count ?? run.rejection_rows, "rejected-count"],
     ["CRM updates", run.crm_updates], ["CRM deletions", run.crm_deletes]
   ]) {
-    const item = node("div", name === "Rejected" && value ? "rejected-count" : "");
+    const item = node("div", value ? highlight : "");
     item.append(node("strong", "", integer.format(value)), node("small", "", name));
     stats.append(item);
   }
   const replay = run.deliveries > 0 && run.events.duplicate_deliveries === run.deliveries;
   const note = el("result-note");
-  note.textContent = replay
-    ? "Replay complete. Every delivery was already recorded."
-    : run.published_at ? (run.crm_rows_queued ? integer.format(run.crm_rows_queued) + " new leads queued" : "")
-      : "The batch is committed. Finish publication to download its files.";
+  if (replay) {
+    note.textContent = previous
+      ? "Replay complete. No new rejections. Showing the rejection reasons from the original run."
+      : "Replay complete. Every delivery was already recorded.";
+  } else if (run.published_at) {
+    note.textContent = run.crm_rows_queued ? integer.format(run.crm_rows_queued) + " new leads queued" : "";
+  } else {
+    note.textContent = "The batch is committed. Finish publication to download its files.";
+  }
   note.hidden = !note.textContent;
   const actions = el("download-bar");
   actions.replaceChildren();
   if (run.files_available) {
-    for (const [kind, label] of [["crm", "CRM CSV"], ["rejected", "Rejected CSV"], ["report", "Run report"]]) {
+    const exports = [["crm", "CRM CSV"], ["report", "Run report"]];
+    if (!previous) exports.splice(1, 0, ["rejected", "Rejected CSV"]);
+    for (const [kind, label] of exports) {
       const download = link(label, "/api/runs/" + run.batch_id + "/download/" + kind);
       if (kind === "crm" && run.crm_rows) download.className = "button primary";
       actions.append(download);
     }
   } else if (!run.published_at) {
     actions.append(button("Recover batch", async () => runAction("/api/recover")));
+  }
+  if (previous) {
+    actions.append(link("Original rejected CSV", "/api/runs/" + previous.batch_id + "/download/rejected"));
+    actions.append(button("Open original batch", () => openRun(previous.batch_id)));
   }
   if (run.crm_updates || run.crm_deletes) actions.append(link("Pending CRM actions", "/api/actions"));
   resultPreview();

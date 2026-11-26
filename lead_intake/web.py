@@ -68,6 +68,28 @@ class Workspace:
             raise FileNotFoundError("Batch not found.")
         return row
 
+    def previous_rejections(self, row):
+        with open_state(self.state) as conn:
+            earlier = conn.execute("""
+                SELECT * FROM exports
+                WHERE input_fingerprint = ? AND published_at IS NOT NULL
+                  AND rowid < (SELECT rowid FROM exports WHERE batch_id = ?)
+                  AND json_extract(summary, '$.rejection_rows') > 0
+                ORDER BY rowid DESC
+            """, (row["input_fingerprint"], row["batch_id"]))
+            for original in earlier:
+                try:
+                    content = export_file(original, "rejected").decode("utf-8")
+                    rows = csv_preview(content, REJECTED_FIELDS, REJECTED_FIELDS)
+                except (OSError, ValueError, csv.Error):
+                    continue
+                return {
+                    "batch_id": original["batch_id"],
+                    "count": json.loads(original["summary"])["rejection_rows"],
+                    "rows": rows,
+                }
+        return None
+
 
 def export_file(row, kind) -> bytes:
     filename, _ = FILES[kind]
@@ -77,6 +99,13 @@ def export_file(row, kind) -> bytes:
     if digest(content) != json.loads(row["manifest"])[filename]:
         raise ValueError("The published file differs from the saved export.")
     return content
+
+
+def csv_preview(content, headers, fields) -> list:
+    reader = csv.DictReader(io.StringIO(content))
+    if tuple(reader.fieldnames or ()) != headers:
+        raise ValueError("Export headers differ from the template.")
+    return [{key: record[key] for key in fields} for record in islice(reader, 25)]
 
 
 def preview(row) -> dict:
@@ -91,12 +120,7 @@ def preview(row) -> dict:
             ("crm", crm, CRM_FIELDS, PREVIEW_FIELDS),
             ("rejected", rejected, REJECTED_FIELDS, REJECTED_FIELDS),
         ):
-            reader = csv.DictReader(io.StringIO(content))
-            if tuple(reader.fieldnames or ()) != headers:
-                raise ValueError("Export headers differ from the template.")
-            data[f"{kind}_preview"] = [
-                {key: record[key] for key in shown} for record in islice(reader, 25)
-            ]
+            data[f"{kind}_preview"] = csv_preview(content, headers, shown)
         data["files_available"] = True
     return data
 
@@ -166,7 +190,10 @@ class Handler(BaseHTTPRequestHandler):
             if run:
                 row = workspace.find_run(run[1])
                 if not run[2]:
-                    return self.json(preview(row))
+                    result = preview(row)
+                    if result["deliveries"] and result["events"]["duplicate_deliveries"] == result["deliveries"]:
+                        result["previous_rejections"] = workspace.previous_rejections(row)
+                    return self.json(result)
                 filename, content_type = FILES[run[2]]
                 return self.response(export_file(row, run[2]), content_type, filename=filename)
             return self.json({"error": "Page not found."}, status=404)

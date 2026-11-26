@@ -57,6 +57,12 @@ class WebTests(unittest.TestCase):
                     replay_info = request(f"/api/runs/{replay}")
                     self.assertEqual((replay_info["filename"], replay_info["crm_rows"]), ("uploaded.csv", 0))
                     self.assertEqual(replay_info["events"]["duplicate_deliveries"], 648)
+                    self.assertEqual(replay_info["rejection_rows"], 0)
+                    self.assertEqual(replay_info["previous_rejections"], {
+                        "batch_id": first, "count": 18, "rows": preview["rejected_preview"],
+                    })
+                    replay_rejected = read(f"/api/runs/{replay}/download/rejected").decode()
+                    self.assertEqual(len(list(csv.reader(io.StringIO(replay_rejected)))), 1)
                     followup = request("/api/sample?batch=follow-up", b"")["batch_id"]
                     self.assertEqual(request(f"/api/runs/{followup}")["crm_rows"], 1)
                     dashboard = request("/api/dashboard?days=30")

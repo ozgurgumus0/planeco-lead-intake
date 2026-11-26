@@ -6,7 +6,7 @@ A local workspace that validates and deduplicates enquiries, scores their chance
 
 1. On Windows, extract the project and double-click **Start Planeco Dashboard.cmd**. It uses Python 3.11 or later, installs the pinned dependencies on first launch, and opens the browser. Keep the launcher window open.
 2. In **CSV intake**, select **Run initial sample** or upload the original [assignment CSV](data/lead_events.csv). A fresh workspace generates **538 new CRM rows** and **18 rejected rows**. The rejection reasons open automatically. Use **CRM CSV** and **Rejected CSV** to download the two outputs.
-3. Run the same file again to see zero new CRM rows, then run the follow-up sample to see new leads, updates, and a deletion. Switch to **Dashboard** for daily arrivals, source and channel mix, rep capacity, and historical campaign economics. **Recent batches** reopens previous results.
+3. Run the same file again to see zero new CRM rows or rejections. When the original file had rejected rows, the replay shows their original reasons and links to the original rejection CSV. Run the follow-up sample to see new leads, updates, and a deletion. Switch to **Dashboard** for daily arrivals, source and channel mix, rep capacity, and historical campaign economics. **Recent batches** reopens previous results.
 
 The dashboard reads the same SQLite state as the CLI. It refreshes after a batch and every 15 minutes while open. Date filters use Lisbon days and end on the last recorded arrival so the fixture stays visible.
 
