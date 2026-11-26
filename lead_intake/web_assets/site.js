@@ -15,11 +15,11 @@ const dayFormat = new Intl.DateTimeFormat("en-GB", {timeZone: "UTC", month: "sho
 const monthFormat = new Intl.DateTimeFormat("en-GB", {timeZone: "UTC", month: "short", year: "numeric"});
 const groups = {
   source: {
-    web_form: ["Web form", "#427960"], chat: ["Chat", "#8fb9a4"], partner_api: ["Partner API", "#d8ae62"]
+    web_form: ["Web form", "#2a644c"], chat: ["Chat", "#8da995"], partner_api: ["Partner API", "#cc9e63"]
   },
   channel: {
-    google: ["Google", "#427960"], meta: ["Meta", "#6b94a3"], organic: ["Organic", "#8fb9a4"],
-    partner: ["Partner", "#d8ae62"], bing: ["Bing", "#9986a6"], unknown: ["Unknown", "#b8c5bb"],
+    google: ["Google", "#2a644c"], meta: ["Meta", "#6b94a3"], organic: ["Organic", "#8da995"],
+    partner: ["Partner", "#cc9e63"], bing: ["Bing", "#9986a6"], unknown: ["Unknown", "#b8c5bb"],
     other: ["Other", "#71877c"]
   }
 };
@@ -83,12 +83,14 @@ async function api(path, options) {
 }
 
 function showView(view) {
+  const entering = el(view).hidden;
   for (const item of document.querySelectorAll("[data-view]")) {
     const active = item.dataset.view === view;
     el(item.dataset.view).hidden = !active;
     if (active) item.setAttribute("aria-current", "page");
     else item.removeAttribute("aria-current");
   }
+  if (entering) window.scrollTo(0, 0);
 }
 
 window.addEventListener("hashchange", () => {
@@ -136,7 +138,6 @@ function renderChart() {
   const legend = el("chart-legend");
   const mix = el("mix");
   el("mix-title").textContent = dimension === "source" ? "Intake sources" : "Marketing channels";
-  el("mix-subtitle").textContent = dimension === "source" ? "How enquiries reached the team" : "Attribution on accepted leads";
   chart.replaceChildren();
   legend.replaceChildren();
   mix.replaceChildren();
@@ -270,7 +271,7 @@ function renderDashboard() {
   el("queue-note").textContent = snapshot.queued
     ? snapshot.queue_high_score + " with a win score of at least 25%" : "Awaiting a compatible slot";
   el("range-text").textContent = snapshot.has_arrivals
-    ? dateLabel(snapshot.start) + " – " + dateLabel(snapshot.end) + " · Latest arrival window"
+    ? dateLabel(snapshot.start) + " – " + dateLabel(snapshot.end) + " · Lisbon dates"
     : "Waiting for the first CSV";
   el("refresh-time").textContent = "Updated " + lisbonTime.format(new Date(snapshot.refreshed_at)) + " Lisbon";
   el("capacity-badge").textContent = snapshot.active + " / " + snapshot.capacity + " used";
@@ -324,7 +325,12 @@ function setFile(selected) {
   if (!file) el("csv-file").value = "";
   el("file-name").textContent = file ? file.name : "Drop your CSV here";
   el("file-detail").textContent = file ? integer.format(Math.max(1, Math.round(file.size / 1024))) + " KB ready to process" : "CSV files up to 10 MB";
+  const picker = el("file-picker");
+  picker.textContent = file ? "Change file" : "Choose file";
+  picker.classList.toggle("primary", !file);
+  picker.classList.toggle("secondary", Boolean(file));
   el("clear-file").hidden = !file;
+  el("run-intake").hidden = !file;
   el("run-intake").disabled = !file || busy;
 }
 
@@ -405,20 +411,24 @@ function renderRun(run) {
     ["Deliveries", run.deliveries], ["New CRM rows", run.crm_rows], ["Rejected", run.rejection_rows],
     ["CRM updates", run.crm_updates], ["CRM deletions", run.crm_deletes]
   ]) {
-    const item = node("div");
+    const item = node("div", name === "Rejected" && value ? "rejected-count" : "");
     item.append(node("strong", "", integer.format(value)), node("small", "", name));
     stats.append(item);
   }
   const replay = run.deliveries > 0 && run.events.duplicate_deliveries === run.deliveries;
-  el("result-note").textContent = replay
+  const note = el("result-note");
+  note.textContent = replay
     ? "Replay complete. Every delivery was already recorded."
-    : run.published_at ? "Scorer " + run.model_version + " · New rows in queue " + run.crm_rows_queued
+    : run.published_at ? (run.crm_rows_queued ? integer.format(run.crm_rows_queued) + " new leads queued" : "")
       : "The batch is committed. Finish publication to download its files.";
+  note.hidden = !note.textContent;
   const actions = el("download-bar");
   actions.replaceChildren();
   if (run.files_available) {
     for (const [kind, label] of [["crm", "CRM CSV"], ["rejected", "Rejected CSV"], ["report", "Run report"]]) {
-      actions.append(link(label, "/api/runs/" + run.batch_id + "/download/" + kind));
+      const download = link(label, "/api/runs/" + run.batch_id + "/download/" + kind);
+      if (kind === "crm" && run.crm_rows) download.className = "button primary";
+      actions.append(download);
     }
   } else if (!run.published_at) {
     actions.append(button("Recover batch", async () => runAction("/api/recover")));
@@ -437,6 +447,7 @@ async function openRun(batchId) {
     notice("intake-message", "");
     renderRun(run);
     el("output-panel").scrollIntoView({block: "start"});
+    el("result-title").focus({preventScroll: true});
   } catch (error) {
     if (request === runRequest) notice("intake-message", error.message, true);
   }
