@@ -57,6 +57,29 @@
           </article>
         </div>
         <div class="sync-line"><span>Auto-refresh every 15 minutes</span><span id="refresh-time"></span></div>
+        <section id="sales-funnel" class="panel economics" aria-labelledby="funnel-title">
+          <div class="panel-head"><div><h2 id="funnel-title">Sales funnel</h2><p id="history-period">Historical cohorts</p></div></div>
+          <dl class="funnel-metrics">
+            <div><dt>Leads</dt><dd><strong id="funnel-leads">—</strong></dd></div>
+            <div><dt>Completed sales calls</dt><dd><strong class="unavailable">Unavailable</strong><small>No completed-call log</small></dd></div>
+            <div><dt>Signed deals</dt><dd><strong id="funnel-wins">—</strong></dd></div>
+            <div><dt>Cost per lead</dt><dd><strong id="funnel-cpl">—</strong><small id="funnel-cost-basis">Campaigns with recorded spend</small></dd></div>
+            <div><dt>Cost per sales call</dt><dd><strong class="unavailable">Unavailable</strong><small>Spend divided by completed calls</small></dd></div>
+            <div><dt>Lead-to-win conversion</dt><dd><strong id="funnel-conversion">—</strong><small>Share of leads that signed</small></dd></div>
+          </dl>
+          <div class="panel-head performance-head"><h3>Campaign performance</h3>
+            <div class="toolbar">
+              <label class="select-wrap"><span class="sr-only">Group performance by</span><select id="economics-group">
+                <option value="campaigns" selected>By campaign</option><option value="channels">By channel</option></select></label>
+              <label class="select-wrap"><span class="sr-only">Sort performance by</span><select id="economics-sort">
+                <option value="leads">Most leads</option><option value="wins">Most signed deals</option>
+                <option value="win_rate">Highest conversion</option><option value="cost_per_lead_eur">Lowest cost per lead</option></select></label>
+            </div>
+          </div>
+          <div class="table-scroll"><table><thead><tr><th scope="col">Channel / campaign</th><th scope="col">Spend</th><th scope="col">Leads</th>
+            <th scope="col">Wins</th><th scope="col">Conversion</th><th scope="col">Cost / lead</th><th scope="col">Cost / win</th>
+            <th scope="col">Booked value</th><th scope="col">Value / spend</th></tr></thead><tbody id="economics"></tbody></table></div>
+        </section>
         <div class="split capacity-row">
           <article class="panel"><div class="panel-head"><h2>Sales capacity</h2>
             <span id="capacity-badge" class="tag"></span></div><div id="capacity" class="capacity"></div></article>
@@ -64,15 +87,6 @@
             <div class="handoff-counts"><div><strong id="handoff-updates">—</strong><span>Updates</span></div><div><strong id="handoff-deletes">—</strong><span>Deletions</span></div></div>
             <a class="button secondary" href="/api/actions">Download pending actions</a></article>
         </div>
-        <article class="panel economics">
-          <div class="panel-head"><div><h2>Campaign economics</h2><p id="history-period">Historical cohorts</p></div>
-            <label class="select-wrap"><span class="sr-only">Break down campaign economics by</span><select id="economics-group">
-              <option value="channels">By channel</option><option value="campaigns">By campaign</option></select></label></div>
-          <div class="table-scroll"><table><thead><tr><th scope="col">Channel / campaign</th><th scope="col">Spend</th><th scope="col">Leads</th>
-            <th scope="col">Wins</th><th scope="col">Win rate</th><th scope="col">Cost / lead</th><th scope="col">Cost / win</th>
-            <th scope="col">Booked value</th><th scope="col">Value / spend</th></tr></thead><tbody id="economics"></tbody></table></div>
-          <p class="footnote">Cost per qualified call and post-call interest need a completed-call log.</p>
-        </article>
         <article class="panel recent"><div class="panel-head"><h2>Recent batches</h2></div>
           <div id="runs"></div></article>
       </section>

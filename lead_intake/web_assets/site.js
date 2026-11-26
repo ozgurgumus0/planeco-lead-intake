@@ -219,13 +219,36 @@ function rowOf(values, classIndex = -1) {
   return row;
 }
 
-function renderEconomics() {
-  if (!snapshot) return;
-  const history = snapshot.history;
+function renderFunnel(history) {
   el("history-period").textContent = "Historical cohorts · "
     + monthFormat.format(dateObject(history.first_month + "-01")) + " – "
     + monthFormat.format(dateObject(history.last_month + "-01"));
-  const values = history[el("economics-group").value];
+  const leads = history.channels.reduce((count, row) => count + row.leads, 0);
+  const wins = history.channels.reduce((count, row) => count + row.wins, 0);
+  const reported = history.campaigns.filter((row) => row.spend_eur !== null);
+  const costedLeads = reported.reduce((count, row) => count + row.leads, 0);
+  const spend = reported.reduce((total, row) => total + row.spend_eur, 0);
+  el("funnel-leads").textContent = integer.format(leads);
+  el("funnel-wins").textContent = integer.format(wins);
+  el("funnel-conversion").textContent = shown(leads ? wins / leads : null, percent);
+  el("funnel-cpl").textContent = shown(costedLeads ? spend / costedLeads : null, euro);
+  el("funnel-cost-basis").textContent = costedLeads
+    ? integer.format(costedLeads) + " leads in campaigns with spend data" : "Campaign spend or lead count unavailable";
+  renderEconomics();
+}
+
+function renderEconomics() {
+  if (!snapshot) return;
+  const field = el("economics-sort").value;
+  const direction = field === "cost_per_lead_eur" ? 1 : -1;
+  const values = [...snapshot.history[el("economics-group").value]].sort((a, b) => {
+    const left = a[field];
+    const right = b[field];
+    if (left === right) return b.leads - a.leads || a.name.localeCompare(b.name);
+    if (left == null) return 1;
+    if (right == null) return -1;
+    return direction * (left - right);
+  });
   const body = el("economics");
   body.replaceChildren();
   for (const row of values) {
@@ -289,7 +312,7 @@ function renderDashboard() {
     capacity.append(item);
   }
   renderChart();
-  renderEconomics();
+  renderFunnel(snapshot.history);
   renderRuns();
 }
 
@@ -480,6 +503,7 @@ el("range").addEventListener("change", loadDashboard);
 el("refresh").addEventListener("click", loadDashboard);
 el("group").addEventListener("change", renderChart);
 el("economics-group").addEventListener("change", renderEconomics);
+el("economics-sort").addEventListener("change", renderEconomics);
 el("csv-file").addEventListener("change", (event) => setFile(event.target.files[0]));
 el("clear-file").addEventListener("click", () => setFile(null));
 el("run-intake").addEventListener("click", () => {

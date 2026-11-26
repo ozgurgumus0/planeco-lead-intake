@@ -10,6 +10,8 @@ A local workspace that validates and deduplicates enquiries, scores their chance
 
 The dashboard reads the same SQLite state as the CLI. It refreshes after a batch and every 15 minutes while open. Date filters use Lisbon days and end on the last recorded arrival so the fixture stays visible.
 
+**Sales funnel** shows August–October historical cohorts separately from live intake. Compare lead volume, signed-deal conversion, cost per lead, and cost per win by campaign or channel. Overall cost per lead divides recorded spend by leads in campaigns with spend data. The assignment files have first-contact timing. Completed sales calls and cost per sales call require a call log, so the dashboard marks both as unavailable.
+
 ## Assignment answers
 
 ### 1. What predicts a signed deal?
