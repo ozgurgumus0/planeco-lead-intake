@@ -1,0 +1,7 @@
+rep_id,name,languages,services,max_open_leads,working_hours_lisbon,absent,seniority,partner_manager
+rep_01,Ferdinand,de;en,building_permit;change_of_use;structural,25,09:00-18:00,,senior,no
+rep_02,Moritz,de,building_permit;change_of_use,25,09:00-18:00,2026-11-23..2026-11-25,senior,no
+rep_03,Leo,de;en,structural;fire_safety,20,10:00-19:00,,mid,no
+rep_04,Carla,de;pt;en,building_permit;structural;change_of_use;fire_safety,20,08:00-17:00,,mid,no
+rep_05,Sarah,de,structural;building_permit,15,09:00-14:00,,junior,no
+rep_06,Caro,de;en,building_permit;change_of_use;structural;fire_safety,30,09:00-18:00,,senior,yes

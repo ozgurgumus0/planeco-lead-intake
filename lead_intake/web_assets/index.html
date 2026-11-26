@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#22403b">
+  <title>Lead operations | Planeco</title>
+  <link rel="stylesheet" href="/site.css">
+  <script src="/site.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <aside class="sidebar">
+    <div class="brand"><div class="brand-mark" aria-hidden="true"><i></i><i></i><i></i></div>
+      <div><strong>planeco<span>.</span></strong><small>Lead operations</small></div>
+    </div>
+    <nav aria-label="Workspace">
+      <a href="#dashboard" data-view="dashboard" aria-current="page"><i class="icon grid-icon" aria-hidden="true"></i>Dashboard</a>
+      <a href="#intake" data-view="intake"><i class="icon file-icon" aria-hidden="true"></i>CSV intake</a>
+    </nav>
+    <div class="sidebar-note"><span class="local-dot"></span> Local workspace</div>
+  </aside>
+  <main id="main">
+    <header class="topbar">
+      <span>Sales operations</span>
+      <div class="sync"><span class="local-dot"></span><span>Refreshes every 15 min</span></div>
+    </header>
+    <div class="page">
+      <div id="dashboard-error" class="notice warning" role="alert" hidden></div>
+      <section id="dashboard" aria-labelledby="dashboard-title">
+        <div class="page-heading">
+          <div><h1 id="dashboard-title">Lead dashboard</h1><p>Monitor enquiries, sales capacity, and channel performance.</p></div>
+          <div class="toolbar">
+            <label class="select-wrap"><span class="sr-only">Arrival date range</span><select id="range">
+              <option value="7">Last 7 days</option><option value="14" selected>Last 14 days</option><option value="30">Last 30 days</option>
+            </select></label>
+            <button class="button secondary" id="refresh" type="button">Refresh</button>
+          </div>
+        </div>
+        <div class="range-line"><span id="range-text">Reading the workspace…</span><span id="refresh-time"></span></div>
+        <div class="stats" aria-label="Key metrics">
+          <article class="stat"><div class="stat-head">New leads <span class="glyph green" aria-hidden="true">+</span></div>
+            <strong id="stat-new">—</strong><small>Accepted in the selected period</small></article>
+          <article class="stat"><div class="stat-head">Active assignments <span class="glyph slate" aria-hidden="true">✓</span></div>
+            <strong id="stat-active">—</strong><small id="active-note">Open sales slots</small></article>
+          <article class="stat"><div class="stat-head">In queue <span class="glyph gold" aria-hidden="true">≡</span></div>
+            <strong id="stat-queue">—</strong><small id="queue-note">Awaiting a compatible slot</small></article>
+          <article class="stat"><div class="stat-head">Mean win score <span class="glyph mint" aria-hidden="true">%</span></div>
+            <strong id="stat-score">—</strong><small id="score-note">Across current leads</small></article>
+        </div>
+        <div class="split chart-row">
+          <article class="panel volume">
+            <div class="panel-head"><div><h2>Daily lead volume</h2><p>Canonical arrivals by Lisbon date</p></div>
+              <label class="select-wrap"><span class="sr-only">Group daily leads by</span><select id="group">
+                <option value="source">Intake source</option><option value="channel">Marketing channel</option>
+              </select></label>
+            </div>
+            <div id="volume-chart" class="volume-chart"></div>
+            <div id="chart-legend" class="legend"></div>
+          </article>
+          <article class="panel"><div class="panel-head"><div><h2 id="mix-title">Intake sources</h2><p id="mix-subtitle">How enquiries reached the team</p></div></div>
+            <div id="mix" class="mix"></div>
+          </article>
+        </div>
+        <div class="split capacity-row">
+          <article class="panel"><div class="panel-head"><div><h2>Sales capacity</h2><p>Open assignments by rep</p></div>
+            <span id="capacity-badge" class="tag"></span></div><div id="capacity" class="capacity"></div></article>
+          <article class="panel"><div class="panel-head"><div><h2>CRM handoff</h2><p>Actions awaiting confirmation</p></div></div>
+            <div class="handoff-counts"><div><strong id="handoff-updates">—</strong><span>Updates</span></div><div><strong id="handoff-deletes">—</strong><span>Deletions</span></div></div>
+            <a class="button secondary" href="/api/actions">Download pending actions</a></article>
+        </div>
+        <article class="panel economics">
+          <div class="panel-head"><div><h2>Campaign economics</h2><p id="history-period">Historical cohorts</p></div>
+            <label class="select-wrap"><span class="sr-only">Break down campaign economics by</span><select id="economics-group">
+              <option value="channels">By channel</option><option value="campaigns">By campaign</option></select></label></div>
+          <div class="table-scroll"><table><thead><tr><th scope="col">Channel / campaign</th><th scope="col">Spend</th><th scope="col">Leads</th>
+            <th scope="col">Wins</th><th scope="col">Win rate</th><th scope="col">Cost / lead</th><th scope="col">Cost / win</th>
+            <th scope="col">Booked value</th><th scope="col">Value / spend</th></tr></thead><tbody id="economics"></tbody></table></div>
+          <p class="footnote">Cost per qualified call and post-call interest need a completed-call log.</p>
+        </article>
+        <article class="panel recent"><div class="panel-head"><div><h2>Recent batches</h2><p>Open a batch to inspect its exports and event counts.</p></div></div>
+          <div id="runs"></div></article>
+      </section>
+      <section id="intake" aria-labelledby="intake-title" hidden>
+        <div class="page-heading"><div><h1 id="intake-title">CSV intake</h1><p>Validate enquiries, score leads, and prepare a CRM export.</p></div></div>
+        <div id="intake-message" class="notice" role="status" hidden></div>
+        <div class="split intake-row">
+          <article class="panel upload-panel">
+            <div class="panel-head"><div><h2>Upload a lead events file</h2><p>Choose <strong>lead_events.csv</strong> or an interview file with the same event headers.</p></div></div>
+            <div id="drop-zone" class="drop-zone">
+              <span class="file-tile"><i class="icon file-icon" aria-hidden="true"></i></span>
+              <strong id="file-name">Drop your CSV here</strong><span id="file-detail">CSV files up to 10 MB</span>
+              <label class="button secondary file-picker" for="csv-file">Choose CSV</label>
+              <input class="sr-only" id="csv-file" type="file" accept=".csv,text/csv">
+            </div>
+            <div class="upload-actions"><button id="run-intake" class="button primary" type="button" disabled>Run intake</button>
+              <button id="clear-file" class="button quiet" type="button" hidden>Clear file</button></div>
+          </article>
+          <article class="panel sample-panel">
+            <div class="panel-head"><div><h2>Assignment demo</h2><p>Run the supplied files against this workspace’s saved state.</p></div></div>
+            <div class="sample-block"><div><strong>Initial batch</strong><span>Run it again to demonstrate replay protection.</span></div>
+              <button class="button secondary" data-sample="initial" type="button">Run initial sample</button></div>
+            <div class="sample-block"><div><strong>Follow-up batch</strong><span>Try a duplicate, update, and deletion after the initial batch.</span></div>
+              <button class="button secondary" data-sample="follow-up" type="button">Run follow-up sample</button></div>
+          </article>
+        </div>
+        <article id="output-panel" class="panel result-panel" aria-labelledby="result-title" hidden>
+          <div class="panel-head"><div><h2 id="result-title">Batch results</h2><p id="result-file"></p></div><span id="result-status" class="tag"></span></div>
+          <div id="result-stats" class="result-stats"></div>
+          <p id="result-note" class="footnote"></p>
+          <div id="download-bar" class="download-bar"></div>
+          <div id="result-tabs" class="tabs" aria-label="Result preview">
+            <button type="button" class="tab selected" data-preview="crm" aria-pressed="true">CRM preview</button>
+            <button type="button" class="tab" data-preview="rejected" aria-pressed="false">Rejections</button>
+            <button type="button" class="tab" data-preview="report" aria-pressed="false">Event counts</button>
+          </div>
+          <div id="result-preview" class="preview"></div>
+        </article>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

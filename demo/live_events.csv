@@ -1,0 +1,6 @@
+event_id,event_type,occurred_at_utc,source,external_id,first_name,last_name,email,phone,postcode,country,language,service,project_stage,message,utm_source,utm_campaign,gclid,fbclid,deletion_reason
+interview_create_01,lead.created,2026-12-02T10:30:00Z,partner_api,interview_new_01,Rita,Costa,interview-new@mail.example,,01067,DE,pt,structural,planning,Preciso de ajuda com os calculos estruturais antes de entregar o pedido.,,,,,
+interview_patch_01,lead.updated,2026-12-02T10:15:00Z,,interview_alias_01,,,,,,,,,rejected_needs_fix,,,,,,
+interview_erase_01,lead.deletion_requested,2026-12-02T10:20:00Z,,hf_9ce83ac190,,,,,,,,,,,,,,,request through known alias
+interview_duplicate_01,lead.created,2026-12-02T10:00:00Z,chat,interview_alias_01,Max,Weber,MAX.WEBER62@MAIL.EXAMPLE,+49 151 3664625,35037,DE,de,structural,planning,"Brauche Statik für Wanddurchbruch, eilt.",organic,seo,,,
+evt_d8570619c66b4d9c,lead.created,2026-11-16T14:33:00.000Z,web_form,hf_4ec4e55329,Ines,Santos,ines.santos26@mail.example,,89153,DE,de,structural,planning,Need a structural engineer for a renovation in Hamburg.,meta,retarget_web,,IwAR1d3cf7e01f0df920aad3,
