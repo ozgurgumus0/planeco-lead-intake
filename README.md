@@ -10,6 +10,8 @@ A local workspace that validates and deduplicates enquiries, scores their chance
 
 The launcher starts in snapshot mode, with the entire upload selected on the dashboard. It refreshes after a batch and every 15 minutes while open. Date filters use Lisbon days and end on the last recorded arrival so the fixture stays visible.
 
+For a quick rehearsal, upload the [practice CSV](demo/lead_events_practice.csv) through **Choose file** and **Run intake**. Its seven fictional rows produce **2 CRM rows** and **5 rejections** in snapshot mode.
+
 To demonstrate the assignment’s cumulative intake and follow-up updates, start the launcher with `--keep-history` or use the [terminal commands](#setup-and-run). In cumulative mode, the same CSV produces zero new CRM rows, and the replay can reopen its original rejection report. The follow-up sample exercises updates and deletions against the first batch.
 
 **Sales funnel** shows August–October historical cohorts separately from live intake. Compare lead volume, signed-deal conversion, cost per lead, and cost per win by campaign or channel. Overall cost per lead divides recorded spend by leads in campaigns with spend data. The assignment files have first-contact timing. Completed sales calls and cost per sales call require a call log, so the dashboard marks both as unavailable.
